@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UmarMF-Coder1</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js "></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js "></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js "></script>
+  <style>
+    body { font-family: sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; }
+    header { background: #222; color: white; padding: 1rem; text-align: center; }
+    main { display: flex; flex: 1; overflow: hidden; }
+    aside { width: 200px; background: #f0f0f0; padding: 1rem; overflow-y: auto; border-right: 1px solid #ccc; }
+    .file { cursor: pointer; padding: 0.3rem; margin: 0.2rem 0; display: block; background: white; border-radius: 4px; }
+    .file.active { background: #d7ecff; }
+    #editor { flex: 1; }
+    iframe { flex: 1; border: none; background: white; }
+    footer { display: flex; border-top: 1px solid #ccc; }
+    textarea { flex: 1; padding: 1rem; resize: none; }
+    button { padding: 1rem; }
+  </style>
+</head>
+<body>
+  <header><h1>UmarMF-Coder1 - Free AI Code Generator</h1></header>
+  <main>
+    <aside id="fileTree"></aside>
+    <div id="editor"></div>
+    <iframe id="preview"></iframe>
+  </main>
+  <footer>
+    <textarea id="prompt" placeholder="Enter your prompt... e.g. 'Create a WordPress homepage'"></textarea>
+    <button onclick="generateCode()">Generate</button>
+    <button onclick="exportProject()">Export ZIP</button>
+  </footer>
+
+  <script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs ' }});
+    window.MonacoEnvironment = { getWorkerUrl: () => URL.createObjectURL(new Blob([`
+      self.MonacoEnvironment = {
+        baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/ '
+      };
+    `], { type: 'application/javascript' })) };
+
+    let editor;
+    let currentFile = 'index.php';
+    let projectFiles = {
+      'index.php': "<?php echo 'Hello World'; ?>",
+      'style.css': "body { color: red; }"
+    };
+    let chatHistory = [];
+
+    monaco.editor.createLoader().then(() => {
+      editor = monaco.editor.create(document.getElementById('editor'), {
+        value: projectFiles[currentFile],
+        language: 'php',
+        theme: 'vs-light'
+      });
+    });
+
+    function updateFileTree() {
+      const tree = document.getElementById('fileTree');
+      tree.innerHTML = '';
+      Object.keys(projectFiles).forEach(file => {
+        const link = document.createElement('div');
+        link.className = 'file' + (file === currentFile ? ' active' : '');
+        link.textContent = file;
+        link.onclick = () => {
+          currentFile = file;
+          editor.setValue(projectFiles[file]);
+          editor.getModel().setOption(monaco.editor.EditorOption.language, getFileLang(file));
+          updateFileTree();
+        };
+        tree.appendChild(link);
+      });
+    }
+
+    function getFileLang(filename) {
+      if (filename.endsWith('.php')) return 'php';
+      if (filename.endsWith('.css')) return 'css';
+      if (filename.endsWith('.js')) return 'javascript';
+      if (filename.endsWith('.html')) return 'html';
+      return 'plaintext';
+    }
+
+    function generateCode() {
+      const userPrompt = document.getElementById('prompt').value.trim();
+      if (!userPrompt) return alert("Please enter a prompt.");
+      chatHistory.push(`User: ${userPrompt}`);
+      const fakeAIResponse = `
+<file name="index.php"><![CDATA[<?php get_header(); ?>
+<h1>Welcome to My Site</h1>
+<?php get_footer(); ?>]]></file>
+<file name="style.css"><![CDATA[body { font-family: Arial; color: blue; }]]></file>
+      `;
+      parseAndApplyCode(fakeAIResponse);
+      chatHistory.push(`AI: Generated files based on "${userPrompt}"`);
+      document.getElementById('prompt').value = '';
+    }
+
+    function parseAndApplyCode(response) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(response, 'text/xml');
+      const files = doc.querySelectorAll('file');
+      files.forEach(f => {
+        const name = f.getAttribute('name');
+        const content = f.textContent.trim();
+        projectFiles[name] = content;
+        if (!document.querySelector(`.file[data-name="${name}"]`)) {
+          const link = document.createElement('div');
+          link.className = 'file';
+          link.textContent = name;
+          link.setAttribute('data-name', name);
+          link.onclick = () => {
+            currentFile = name;
+            editor.setValue(content);
+            editor.getModel().setOption(monaco.editor.EditorOption.language, getFileLang(name));
+            updateFileTree();
+          };
+          document.getElementById('fileTree').appendChild(link);
+        }
+      });
+      updateFileTree();
+      editor.setValue(projectFiles[currentFile]);
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const html = projectFiles['index.php'] || '';
+      const css = projectFiles['style.css'] || '';
+      const iframe = document.getElementById('preview');
+      iframe.srcdoc = `
+        <!DOCTYPE html>
+        <html>
+          <head><style>${css}</style></head>
+          <body>${html.replace(/<\?php.*?\?>/g, '')}</body>
+        </html>
+      `;
+    }
+
+    function exportProject() {
+      const zip = new JSZip();
+      for (let file in projectFiles) {
+        zip.file(file, projectFiles[file]);
+      }
+      zip.generateAsync({type:"blob"}).then(function(content) {
+        saveAs(content, "UmarMF-Coder1_Project.zip");
+      });
+    }
+
+    // Initialize
+    updateFileTree();
+  </script>
+</body>
+  </html
