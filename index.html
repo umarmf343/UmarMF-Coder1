@@ -31,6 +31,7 @@
   <footer>
     <textarea id="prompt" placeholder="Enter your prompt... e.g. 'Create a WordPress homepage'"></textarea>
     <button onclick="generateCode()">Generate</button>
+    <button onclick="continueGeneration()">Continue</button>
     <button onclick="exportProject()">Export ZIP</button>
   </footer>
 
@@ -44,15 +45,13 @@
 
     let editor;
     let currentFile = 'index.php';
-    let projectFiles = {
-      'index.php': "<?php echo 'Hello World'; ?>",
-      'style.css': "body { color: red; }"
-    };
+    let projectFiles = {};
     let chatHistory = [];
+    let lastPrompt = "";
 
     monaco.editor.createLoader().then(() => {
       editor = monaco.editor.create(document.getElementById('editor'), {
-        value: projectFiles[currentFile],
+        value: "",
         language: 'php',
         theme: 'vs-light'
       });
@@ -80,6 +79,7 @@
       if (filename.endsWith('.css')) return 'css';
       if (filename.endsWith('.js')) return 'javascript';
       if (filename.endsWith('.html')) return 'html';
+      if (filename.endsWith('.jsx')) return 'javascriptreact';
       return 'plaintext';
     }
 
@@ -87,15 +87,31 @@
       const userPrompt = document.getElementById('prompt').value.trim();
       if (!userPrompt) return alert("Please enter a prompt.");
       chatHistory.push(`User: ${userPrompt}`);
+      lastPrompt = userPrompt;
       const fakeAIResponse = `
 <file name="index.php"><![CDATA[<?php get_header(); ?>
 <h1>Welcome to My Site</h1>
 <?php get_footer(); ?>]]></file>
 <file name="style.css"><![CDATA[body { font-family: Arial; color: blue; }]]></file>
+<file name="script.js"><![CDATA[console.log("Hello from script.js");]]></file>
       `;
       parseAndApplyCode(fakeAIResponse);
       chatHistory.push(`AI: Generated files based on "${userPrompt}"`);
       document.getElementById('prompt').value = '';
+    }
+
+    function continueGeneration() {
+      if (!lastPrompt) return alert("No previous prompt found.");
+      const fakeAIResponse = `
+<file name="index.php"><![CDATA[<?php
+// Continued part
+echo "<p>This was added by Continue button.</p>";
+?>]]></file>
+<file name="style.css"><![CDATA[body { background: #f9f9f9; }]]></file>
+      `;
+      parseAndApplyCode(fakeAIResponse);
+      chatHistory.push(`AI: Continued generation for "${lastPrompt}"`);
+      alert("Finished generating more code!");
     }
 
     function parseAndApplyCode(response) {
@@ -105,7 +121,7 @@
       files.forEach(f => {
         const name = f.getAttribute('name');
         const content = f.textContent.trim();
-        projectFiles[name] = content;
+        projectFiles[name] = (projectFiles[name] || "") + content;
         if (!document.querySelector(`.file[data-name="${name}"]`)) {
           const link = document.createElement('div');
           link.className = 'file';
@@ -113,7 +129,7 @@
           link.setAttribute('data-name', name);
           link.onclick = () => {
             currentFile = name;
-            editor.setValue(content);
+            editor.setValue(projectFiles[name]);
             editor.getModel().setOption(monaco.editor.EditorOption.language, getFileLang(name));
             updateFileTree();
           };
@@ -126,14 +142,16 @@
     }
 
     function updatePreview() {
-      const html = projectFiles['index.php'] || '';
+      const html = projectFiles['index.html'] || projectFiles['index.php'] || '';
       const css = projectFiles['style.css'] || '';
+      const js = projectFiles['script.js'] || '';
       const iframe = document.getElementById('preview');
       iframe.srcdoc = `
         <!DOCTYPE html>
         <html>
           <head><style>${css}</style></head>
           <body>${html.replace(/<\?php.*?\?>/g, '')}</body>
+          <script>${js}<\/script>
         </html>
       `;
     }
@@ -152,4 +170,4 @@
     updateFileTree();
   </script>
 </body>
-  </html
+</html>
