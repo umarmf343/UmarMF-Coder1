@@ -22,14 +22,14 @@
   </style>
 </head>
 <body>
-  <header><h1>UmarMF-Coder1 - Free AI Code Generator</h1></header>
+  <header><h1>UmarMF-Coder1 - v0-like AI Code Generator</h1></header>
   <main>
     <aside id="fileTree"></aside>
     <div id="editor"></div>
     <iframe id="preview"></iframe>
   </main>
   <footer>
-    <textarea id="prompt" placeholder="Enter your prompt... e.g. 'Create a WordPress homepage'"></textarea>
+    <textarea id="prompt" placeholder="Describe your UI... e.g. 'Create a responsive navbar with Tailwind'"></textarea>
     <button onclick="generateCode()">Generate</button>
     <button onclick="continueGeneration()">Continue</button>
     <button onclick="exportProject()">Export ZIP</button>
@@ -44,7 +44,7 @@
     `], { type: 'application/javascript' })) };
 
     let editor;
-    let currentFile = 'index.php';
+    let currentFile = 'App.jsx';
     let projectFiles = {};
     let chatHistory = [];
     let lastPrompt = "";
@@ -52,7 +52,7 @@
     monaco.editor.createLoader().then(() => {
       editor = monaco.editor.create(document.getElementById('editor'), {
         value: "",
-        language: 'php',
+        language: 'javascriptreact',
         theme: 'vs-light'
       });
     });
@@ -75,11 +75,12 @@
     }
 
     function getFileLang(filename) {
-      if (filename.endsWith('.php')) return 'php';
-      if (filename.endsWith('.css')) return 'css';
       if (filename.endsWith('.js')) return 'javascript';
-      if (filename.endsWith('.html')) return 'html';
       if (filename.endsWith('.jsx')) return 'javascriptreact';
+      if (filename.endsWith('.ts')) return 'typescript';
+      if (filename.endsWith('.tsx')) return 'typescriptreact';
+      if (filename.endsWith('.css')) return 'css';
+      if (filename.endsWith('.html')) return 'html';
       return 'plaintext';
     }
 
@@ -89,11 +90,20 @@
       chatHistory.push(`User: ${userPrompt}`);
       lastPrompt = userPrompt;
       const fakeAIResponse = `
-<file name="index.php"><![CDATA[<?php get_header(); ?>
-<h1>Welcome to My Site</h1>
-<?php get_footer(); ?>]]></file>
-<file name="style.css"><![CDATA[body { font-family: Arial; color: blue; }]]></file>
-<file name="script.js"><![CDATA[console.log("Hello from script.js");]]></file>
+<file name="App.jsx"><![CDATA[import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <h1 className="text-2xl font-bold mb-4">Hello from UmarMF-Coder1</h1>
+      <p>This was generated from your prompt.</p>
+    </div>
+  );
+}
+]]></file>
+<file name="styles.css"><![CDATA[@tailwind base;
+@tailwind components;
+@tailwind utilities;]]></file>
       `;
       parseAndApplyCode(fakeAIResponse);
       chatHistory.push(`AI: Generated files based on "${userPrompt}"`);
@@ -103,11 +113,9 @@
     function continueGeneration() {
       if (!lastPrompt) return alert("No previous prompt found.");
       const fakeAIResponse = `
-<file name="index.php"><![CDATA[<?php
-// Continued part
-echo "<p>This was added by Continue button.</p>";
-?>]]></file>
-<file name="style.css"><![CDATA[body { background: #f9f9f9; }]]></file>
+<file name="App.jsx"><![CDATA[      <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+        Click Me
+      </button>]]></file>
       `;
       parseAndApplyCode(fakeAIResponse);
       chatHistory.push(`AI: Continued generation for "${lastPrompt}"`);
@@ -142,16 +150,24 @@ echo "<p>This was added by Continue button.</p>";
     }
 
     function updatePreview() {
-      const html = projectFiles['index.html'] || projectFiles['index.php'] || '';
-      const css = projectFiles['style.css'] || '';
-      const js = projectFiles['script.js'] || '';
+      const jsx = projectFiles['App.jsx'] || '';
+      const css = projectFiles['styles.css'] || '';
       const iframe = document.getElementById('preview');
       iframe.srcdoc = `
         <!DOCTYPE html>
         <html>
-          <head><style>${css}</style></head>
-          <body>${html.replace(/<\?php.*?\?>/g, '')}</body>
-          <script>${js}<\/script>
+          <head>
+            <script src="https://cdn.tailwindcss.com "></script>
+            <style>${css}</style>
+          </head>
+          <body>
+            <div id="root">${jsx.replace(/.*return\s*\(\s*([\s\S]*?)\s*\);.*/m, '$1')}</div>
+            <script src="https://unpkg.com/react @18/umd/react.development.js"></script>
+            <script src="https://unpkg.com/react-dom @18/umd/react-dom.development.js"></script>
+            <script>
+              ReactDOM.render(React.createElement(${projectFiles['App.jsx'].replace(/.*function (\w+)/, '$1')}), document.getElementById('root'));
+            <\/script>
+          </body>
         </html>
       `;
     }
